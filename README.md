@@ -1,0 +1,4 @@
+# Finite Difference Method
+In numerical analysis, finite-difference methods (FDM) are a class of numerical techniques for solving differential equations by approximating derivatives with finite differences. Both the spatial domain and time domain are discretized, or broken into a finite number of intervals, and the values of the solution at the end points of the intervals are approximated by solving algebraic equations containing finite differences and values from nearby points. ( [Wikipedia ](https://en.wikipedia.org/wiki/Finite_difference_method) )
+
+In this repo you'll find a set of implementations of FDM in several PDE equations.
