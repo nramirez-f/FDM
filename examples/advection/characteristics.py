@@ -11,6 +11,9 @@ def initial_condition(x):
     z[x > 2] = 1 / 2
     return z
 
-output = characteristics(-1, 3, 100, 5, 10, 1/2, initial_condition)
+filepath = characteristics(-1, 3, 100, 5, 10, 1/2, initial_condition)
 
-ncviewer = ncv(output)
+nc = ncv(filepath)
+nc.playShape(0)
+nc.close()
+

@@ -24,14 +24,14 @@ class ncf:
             self.rootgrp.createDimension(coord_name, len(coord_values))
             coord_var = self.rootgrp.createVariable(coord_name, "f4", (coord_name,))
             coord_var[:] = coord_values
-            coord_var.unit = ""  # Default unit
+            coord_var.unit = "unit"  # Default unit
             self.coords_names.append(coord_name)
 
         # Variables
         self.rootgrp.createVariable("time", "f8", ("time",)).units = "s"
         for var_name in vars:
-            var = self.rootgrp.createVariable(var_name, "f4", ("time", *self.coords_names))
-            var.units = "unit"  # Default unit
+            var = self.rootgrp.createVariable(var_name, "f4", (*self.coords_names, "time"))
+            var.units = "unit"
 
         # Attributes
         self.rootgrp.description = description
@@ -51,7 +51,7 @@ class ncf:
 
         for var_name, var_values in vars.items():
             if var_name in self.rootgrp.variables:
-                self.rootgrp.variables[var_name][time_dim, ...] = var_values
+                self.rootgrp.variables[var_name][..., time_dim] = var_values
             else:
                 raise ValueError(f"Variable '{var_name}' not found in the NetCDF file.")
 

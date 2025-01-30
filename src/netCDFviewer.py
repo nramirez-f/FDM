@@ -3,108 +3,151 @@ from netCDF4 import Dataset
 import plotly.graph_objects as go
 
 
+
+
 class ncv:
+    """
+    Object of netCDF to visualize it.
+    """
+
+    rootgrp = None
+
     def __init__(self, filepath):
         """
-        Initialize the view with a given file.
-        
-        Parameters:
+        Initialize the netCDF object with the path of the file.
+    
         - filepath: Path to the NetCDF file.
         """
-        # Abrir el archivo NetCDF
-        rootgrp = Dataset(filepath, "r")
-        
-        # Extraer las variables del archivo
-        times = rootgrp.variables["time"][:]  # Tiempo
-        x = rootgrp.variables["x"][:]         # Coordenada espacial
-        u = rootgrp.variables["u"][:]         # Variable u (simulación)
+    
+        if (filepath is None or filepath ==""):
+            raise Exception("filepath must be distinct of empty string.")
+        else:
+            self.rootgrp = Dataset(filepath, "r")
 
-        # Calcular el valor mínimo y máximo de u a través de todos los tiempos y espacios
-        u_min = u.min()
-        u_max = u.max()
 
-        # Agregar un pequeño margen al rango
-        margin = 0.05  # Margen de 5% por encima y por debajo del rango
-        u_range_min = u_min - margin * (u_max - u_min)
-        u_range_max = u_max + margin * (u_max - u_min)
+    def shape(self, iterPos, iterName = "time", varName = "u", dimName = "x"):
+        """
+            Static plot at one iterable position.
+
+            - itername: Name of the iterable dimension
+            - 
+        """
+
+        iterDomain = self.rootgrp.variables[iterName][:]
+
+        if iterPos in iterDomain:
+            fig = go.Figure()
+
+            fig.add_trace(go.Scatter(x=self.rootgrp.variables[dimName][:], y=self.rootgrp.variables[varName][:, iterPos],
+                                    mode='lines',
+                                    name=varName+"("+ dimName + ", " + str(iterPos) +")",
+                                    showlegend=True))
+            
+            fig.show()
+        else:
+            raise Exception("iterPos not in its posible values.")
         
-        # Crear la figura
-        fig = go.Figure(
-            data=[go.Scatter(x=x, y=u[0, :], mode="lines", name=f"t = {times[0]:.2f} s")],
-            layout=go.Layout(
-                title="Evolución de la variable u a lo largo del tiempo",
-                xaxis_title="Espacio (x)",
-                yaxis_title="Valor de u",
-                showlegend=True,
-                updatemenus=[
-                    dict(
-                        type="buttons",
-                        x=0.1,
-                        xanchor="right",
-                        y=1.15,
-                        yanchor="top",
-                        buttons=[
-                            dict(
-                                label="Play",
-                                method="animate",
-                                args=[None, dict(frame=dict(duration=100, redraw=True), fromcurrent=True)]
-                            ),
-                            dict(
-                                label="Pause",
-                                method="animate",
-                                args=[[None], dict(frame=dict(duration=0, redraw=True), mode="immediate", transition=dict(duration=0))]
-                            )
-                        ]
+    import plotly.graph_objects as go
+
+    def playShape(self, iterInit, iterName="time", varName="u", dimName="x"):
+        """
+            Animated plot from iterInit to the end of iterDomain.
+
+            - iterInit: Initial value for the iteration
+            - iterName: Name of the iterable dimension
+            - varName: Name of the variable
+            - dimName: Name of the dimension
+        """
+        fullIterDomain = self.rootgrp.variables[iterName][:]
+
+        if iterInit not in fullIterDomain:
+            raise Exception("iterInit not in its possible values.")
+        else:
+            iterDomain = [i for i in fullIterDomain if i >= iterInit]
+
+            fig = go.Figure(
+                data=[
+                    go.Scatter(
+                        x=self.rootgrp.variables[dimName][:],
+                        y=self.rootgrp.variables[varName][:][:, iterDomain.index(iterInit)],
+                        mode="lines",
+                        name=f"{varName}({dimName}, {iterInit})"
                     )
-                ],
-                sliders=[dict(
-                    yanchor="top",
-                    xanchor="left",
-                    currentvalue=dict(
-                        visible=True,
-                        prefix="Tiempo: ",
-                        font=dict(size=20),
-                        offset=20
-                    ),
-                    steps=[]
-                )],
-                yaxis=dict(
-                    range=[u_range_min, u_range_max]  # Establecer el rango del eje y
+                ]
+            )
+
+            eps_y = 0.1
+            fig.update_layout(
+                yaxis=dict(range=[self.rootgrp.variables[varName][:].min() - eps_y, self.rootgrp.variables[varName][:].max() + eps_y])
+            )
+
+            frames = [
+                go.Frame(
+                    data=[
+                        go.Scatter(
+                            x=self.rootgrp.variables[dimName][:],
+                            y=self.rootgrp.variables[varName][:][:, iterDomain.index(iterValue)],
+                            mode="lines",
+                            name=f"{varName}({dimName}, {iterValue})"
+                        )
+                    ],
+                    name=str(iterValue)
                 )
-            )
-        )
+                for iterValue in iterDomain
+            ]
 
-        # Crear las frames para la animación
-        frames = []
-        for t_index in range(1, len(times)):
-            frame = go.Frame(
-                data=[go.Scatter(x=x, y=u[t_index, :], mode="lines", name=f"t = {times[t_index]:.2f} s")],
-                name=f"t = {times[t_index]:.2f} s"
-            )
-            frames.append(frame)
-        
-        # Agregar las frames a la figura
-        fig.frames = frames
+            fig.update(frames=frames)
 
-        # Crear los pasos para el slider
-        steps = []
-        for t_index in range(len(times)):
-            step = dict(
-                method="animate",
-                args=[
-                    [f"t = {times[t_index]:.2f} s"],
-                    dict(
-                        frame=dict(duration=100, redraw=True),
-                        mode="immediate",
-                        transition=dict(duration=0)
-                    )
-                ],
-                label=f"{times[t_index]:.2f} s"
+            fig.update_layout(
+                updatemenus=[
+                    {
+                        "buttons": [
+                            {
+                                "args": [None, {"frame": {"duration": 200, "redraw": True}, "fromcurrent": True}],
+                                "label": "▶ Play",
+                                "method": "animate"
+                            },
+                            {
+                                "args": [[None], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate", "transition": {"duration": 0}}],
+                                "label": "❚❚ Pause",
+                                "method": "animate"
+                            }
+                        ],
+                        "direction": "left",
+                        "pad": {"r": 10, "t": 87},
+                        "showactive": False,
+                        "type": "buttons",
+                        "x": 0.1,
+                        "xanchor": "right",
+                        "y": 0,
+                        "yanchor": "top"
+                    }
+                ]
             )
-            steps.append(step)
-        
-        # Actualizar la configuración del slider
-        fig.layout.sliders[0]["steps"] = steps
 
-        # Mostrar la visualización
-        fig.show()
+            fig.update_layout(
+                sliders=[
+                    {
+                        "steps": [
+                            {
+                                "args": [[str(iterValue)], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate"}],
+                                "label": str(iterValue),
+                                "method": "animate"
+                            }
+                            for iterValue in iterDomain
+                        ],
+                        "x": 0.1,
+                        "len": 0.9,
+                        "xanchor": "left",
+                        "y": -0.2,
+                        "yanchor": "top"
+                    }
+                ]
+            )
+
+            fig.show()
+
+
+            
+    def close(self,):
+        self.rootgrp.close()
