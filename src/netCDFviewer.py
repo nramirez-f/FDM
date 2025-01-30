@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 
 
 
-class ncv:
+class NCV:
     """
     Object of netCDF to visualize it.
     """
@@ -46,8 +46,6 @@ class ncv:
             fig.show()
         else:
             raise Exception("iterPos not in its posible values.")
-        
-    import plotly.graph_objects as go
 
     def playShape(self, iterInit, iterName="time", varName="u", dimName="x"):
         """
@@ -149,5 +147,13 @@ class ncv:
 
 
             
-    def close(self,):
+    def close(self):
         self.rootgrp.close()
+
+    ### WITH CONTEXT ###
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()

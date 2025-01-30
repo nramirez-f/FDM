@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from advection import characteristics
-from netCDFviewer import ncv
+from netCDFviewer import NCV
 
 def initial_condition(x):
     """Initial condition for the Cauchy problem"""
@@ -13,7 +13,8 @@ def initial_condition(x):
 
 filepath = characteristics(-1, 3, 100, 5, 10, 1/2, initial_condition)
 
-nc = ncv(filepath)
-nc.playShape(0)
-nc.close()
+ncv = NCV(filepath)
 
+ncv.playShape(0)
+
+ncv.close()
