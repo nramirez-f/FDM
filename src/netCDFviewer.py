@@ -23,9 +23,21 @@ class NCV:
             raise Exception("filepath must be distinct of empty string.")
         else:
             self.rootgrp = Dataset(filepath, "r")
+    
+    ### BASIC ###
+    def scatter(self, dimName, varName, iterValue, legend=""):
+        sct = go.Scatter(
+                x=self.rootgrp.variables[dimName][:],
+                y=self.rootgrp.variables[varName][:][:, iterValue],
+                mode="lines",
+                showlegend=bool(legend),
+                name=legend,
+            )
 
-
-    def shape(self, iterPos, iterName = "time", varName = "u", dimName = "x"):
+        return sct
+    
+    ### PLOT ###
+    def shape(self, iterValue, iterName = "time", varName = "u", dimName = "x"):
         """
             Static plot at one iterable position.
 
@@ -35,19 +47,33 @@ class NCV:
 
         iterDomain = self.rootgrp.variables[iterName][:]
 
-        if iterPos in iterDomain:
+        if iterValue in iterDomain:
             fig = go.Figure()
 
-            fig.add_trace(go.Scatter(x=self.rootgrp.variables[dimName][:], y=self.rootgrp.variables[varName][:, iterPos],
-                                    mode='lines',
-                                    name=varName+"("+ dimName + ", " + str(iterPos) +")",
-                                    showlegend=True))
+            fig.add_trace(self.scatter(dimName, varName, iterValue, f"{varName}({dimName}, {iterValue})"))
             
+            # Layout
+            fig.update_layout(
+                    title=dict(
+                        text=self.rootgrp.description
+                    ),
+                    xaxis=dict(
+                        title=dict(
+                            text=dimName
+                        )
+                    ),
+                    yaxis=dict(
+                        title=dict(
+                            text=varName
+                        )
+                    ),
+            )
+
             fig.show()
         else:
-            raise Exception("iterPos not in its posible values.")
+            raise Exception("iterValue not in its posible values.")
 
-    def playShape(self, iterInit, iterName="time", varName="u", dimName="x"):
+    def playShape(self, iterInit, delay=100, iterName="time", varName="u", dimName="x"):
         """
             Animated plot from iterInit to the end of iterDomain.
 
@@ -65,43 +91,48 @@ class NCV:
 
             fig = go.Figure(
                 data=[
-                    go.Scatter(
-                        x=self.rootgrp.variables[dimName][:],
-                        y=self.rootgrp.variables[varName][:][:, iterDomain.index(iterInit)],
-                        mode="lines",
-                        name=f"{varName}({dimName}, {iterInit})"
-                    )
+                    self.scatter(dimName, varName, iterDomain.index(iterInit))
                 ]
+            )
+
+            # Frames
+            fig.update(
+                frames=[
+                    go.Frame(
+                        data=[
+                            self.scatter(dimName, varName, iterDomain.index(iterValue))
+                        ],
+                        name=str(iterValue)
+                    )
+                    for iterValue in iterDomain
+                ]
+            )
+
+            # Layout
+            fig.update_layout(
+                title=dict(text=self.rootgrp.description),
             )
 
             eps_y = 0.1
             fig.update_layout(
-                yaxis=dict(range=[self.rootgrp.variables[varName][:].min() - eps_y, self.rootgrp.variables[varName][:].max() + eps_y])
+                yaxis=dict(range=[self.rootgrp.variables[varName][:].min() - eps_y, self.rootgrp.variables[varName][:].max() + eps_y],
+                           title=dict(text=varName)),
+            )
+            
+            fig.update_layout(
+                    xaxis=dict(
+                        range = [self.rootgrp.variables[dimName][0], self.rootgrp.variables[dimName][-1]],
+                        title=dict(text=dimName),
+                    ),
             )
 
-            frames = [
-                go.Frame(
-                    data=[
-                        go.Scatter(
-                            x=self.rootgrp.variables[dimName][:],
-                            y=self.rootgrp.variables[varName][:][:, iterDomain.index(iterValue)],
-                            mode="lines",
-                            name=f"{varName}({dimName}, {iterValue})"
-                        )
-                    ],
-                    name=str(iterValue)
-                )
-                for iterValue in iterDomain
-            ]
-
-            fig.update(frames=frames)
-
+            # Animation Controlsb
             fig.update_layout(
                 updatemenus=[
                     {
                         "buttons": [
                             {
-                                "args": [None, {"frame": {"duration": 200, "redraw": True}, "fromcurrent": True}],
+                                "args": [None, {"frame": {"duration": delay, "redraw": True}, "fromcurrent": True}],
                                 "label": "▶ Play",
                                 "method": "animate"
                             },
@@ -151,7 +182,6 @@ class NCV:
         self.rootgrp.close()
 
     ### WITH CONTEXT ###
-
     def __enter__(self):
         return self
 
