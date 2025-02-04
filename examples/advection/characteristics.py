@@ -1,20 +1,16 @@
-# -*- coding: utf-8 -*-
-import numpy as np
-from advection import characteristics
+from advection import method_of_characteristics as moc
 from netCDFviewer import NCV
+from initial_conditions import *
 
-def initial_condition(x):
-    """Initial condition for the Cauchy problem"""
-    z = np.zeros(len(x))
-    z[x < 0] = 1.0
-    z[(0 <= x) & (x <= 2)] = 1 - 1 / 8 * x[(0 <= x) & (x <= 2)]**2 * (3 - x[(0 <= x) & (x <= 2)])
-    z[x > 2] = 1 / 2
-    return z
+x0 = -4
+xf = 4
+nx = 400
+T = 10
+nt = 40
+c = -0.5
 
-filepath = characteristics(-1, 3, 100, 5, 10, 1/2, initial_condition)
+filepath = moc(x0, xf, nx, T, nt, c, f3)
 
 ncv = NCV(filepath)
-
-ncv.playShape(0)
-
+ncv.shape(5)
 ncv.close()
