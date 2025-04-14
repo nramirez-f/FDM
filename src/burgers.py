@@ -1,5 +1,4 @@
 import plotly.graph_objects as go
-from sim2netCDF import ncf
 import numpy as np
 
 def plot_method_of_characteristics(x0:float, xf:float, nx:int, T:float, nt:int, f):
@@ -75,7 +74,7 @@ def plot_method_of_characteristics(x0:float, xf:float, nx:int, T:float, nt:int, 
             title="u",
         ),
         xaxis=dict(
-            range=[xi[0], x[-1]],
+            range=[min(x[0], xi[0]), max(x[-1], xi[-1])],
             title="x",
         ),
     )

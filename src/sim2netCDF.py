@@ -18,7 +18,7 @@ class ncf:
         self.rootgrp = Dataset(self.filepath, "w", format="NETCDF4")
 
         # Dimensions
-        self.rootgrp.createDimension("time", None)
+        self.rootgrp.createDimension("t", None)
         self.coords_names = []
         for coord_name, coord_values in coords.items():
             self.rootgrp.createDimension(coord_name, len(coord_values))
@@ -28,9 +28,9 @@ class ncf:
             self.coords_names.append(coord_name)
 
         # Variables
-        self.rootgrp.createVariable("time", "f8", ("time",)).units = "s"
+        self.rootgrp.createVariable("t", "f8", ("t",)).units = "s"
         for var_name in vars:
-            var = self.rootgrp.createVariable(var_name, "f4", (*self.coords_names, "time"))
+            var = self.rootgrp.createVariable(var_name, "f4", (*self.coords_names, "t"))
             var.units = "unit"
 
         # Attributes
@@ -46,8 +46,8 @@ class ncf:
         - current_time: Current time of the simulation (float).
         - vars: Dictionary {variable_name: numpy_array}.
         """
-        time_dim = len(self.rootgrp.variables["time"])
-        self.rootgrp.variables["time"][time_dim] = current_time
+        time_dim = len(self.rootgrp.variables["t"])
+        self.rootgrp.variables["t"][time_dim] = current_time
 
         for var_name, var_values in vars.items():
             if var_name in self.rootgrp.variables:
