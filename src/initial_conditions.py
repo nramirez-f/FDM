@@ -68,3 +68,14 @@ def riemann(ul=1, ur=0, sp=0):
         f = np.where(x < sp, ul, ur)
         return _finalize_output(f, isscalar)
     return shock
+
+# From Riemann Solvers and Numerical Methods for Flid Dynamics by E. Toro
+def bumping(alpha, beta):
+    """
+    """
+    def bump(x):
+        x, isscalar = _prepare_input(x)
+        f = alpha*np.exp(-beta*x*x)
+        return _finalize_output(f, isscalar)
+    
+    return bump
