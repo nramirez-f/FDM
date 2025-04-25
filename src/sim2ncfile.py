@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 from netCDF4 import Dataset
 import time
+import os
 
-
-class ncf:
+class ncfile:
     def __init__(self, full_path, coords, vars, description):
         """
         Initializes the nc object by creating a NetCDF file.
@@ -14,6 +14,7 @@ class ncf:
         - vars: List of variable names to store in the file.
         - description: String describing the simulation.
         """
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
         self.filepath = f"{full_path}"
         self.rootgrp = Dataset(self.filepath, "w", format="NETCDF4")
 

@@ -79,3 +79,21 @@ def bumping(alpha, beta):
         return _finalize_output(f, isscalar)
     
     return bump
+
+def heaviside(a, b, bottom=0, height=1):
+    """
+    """
+    if (b < a):
+        def step(x):
+            x, isscalar = _prepare_input(x)
+            f = np.zeros(len(x))
+            return _finalize_output(f, isscalar)
+    else:
+        def step(x):
+            x, isscalar = _prepare_input(x)
+            f = np.zeros(len(x)) + bottom
+            xp_mask = (a <= x) & (x <= b)
+            f[xp_mask] = height
+            return _finalize_output(f, isscalar)
+    return step
+

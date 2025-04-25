@@ -1,8 +1,8 @@
 import numpy as np
-from sim2netCDF import ncf
+from sim2ncfile import ncfile
 from scipy.sparse import diags, csr_matrix
 
-def method_of_characteristics(x0:float, xf:float, nx:int, T:float, nt:int, a:float, f, sns:int = 1):
+def method_of_characteristics(x0:float, xf:float, nx:int, T:float, nt:int, a:float, f, sns:int = 1, path_to_save="simulations"):
     """
     Solves the advection equation using the method of characteristics and saves the results.
 
@@ -31,6 +31,9 @@ def method_of_characteristics(x0:float, xf:float, nx:int, T:float, nt:int, a:flo
 
     sns : int
         snapshot step to save simulation.
+    
+    path_to_save : str
+        path to save the simulation. Name will be advection-exact
 
     Returns:
     --------
@@ -43,17 +46,19 @@ def method_of_characteristics(x0:float, xf:float, nx:int, T:float, nt:int, a:flo
 
     coords = {"x": x}
     vars = ["u"]
-    full_path = "simulations/advection-moc.nc"
+    full_path = f"{path_to_save}/advection-exact.nc"
     description = "Advection simulation by Method of Characteristic"
-    rootgrp = ncf(full_path, coords, vars, description)
+    ncf = ncfile(full_path, coords, vars, description)
 
     for k in range(nt + 1):
         t = dt * k
         u = f(x - a * t)
+        if (a > 0):
+            u[0] = 0
         if (k % sns == 0):
-            ncf.save(rootgrp, t, {"u": u})
+            ncf.save(t, {"u": u})
 
-    ncf.close(rootgrp)
+    ncf.close()
 
     return full_path
 
@@ -69,18 +74,18 @@ def _matrix(a:float, nu, dim, method:str):
             upper_diag = (-nu) * np.ones(dim-1)
             A = diags([main_diag, upper_diag], [0, 1], shape=(dim, dim), format='csr')
 
-    elif (method == "Lax-Friedichs"):
+    elif (method == "lax_friedichs"):
         lower_diag = 0.5 * (1+nu) * np.ones(dim-1)
         upper_diag = 0.5 * (1-nu) * np.ones(dim-1)
         A = diags([lower_diag, upper_diag], [-1, 1], shape=(dim, dim), format='csr')
 
-    elif (method == "Lax-Wendroff"):
+    elif (method == "lax_wendroff"):
         lower_diag = 0.5 * nu * (nu+1) * np.ones(dim-1)
         diag = (1-nu*nu) * np.ones(dim)
         upper_diag = 0.5 * nu * (nu-1) * np.ones(dim-1)
         A = diags([lower_diag, diag, upper_diag], [-1, 0, 1], shape=(dim, dim), format='csr')
 
-    elif (method == "Beam-Warming"):
+    elif (method == "beam_warming"):
         if (a > 0):
             lower_lower_diag = 0.5 * nu * (nu-1) * np.ones(dim-2)
             lower_diag = nu * (2-nu) * np.ones(dim-1)
@@ -130,7 +135,7 @@ def _iteration(a, nu, dim, method_name, u, iteration_type="iterative"):
 
     return u
 
-def _method(method_name:str, x0:float, xf:float, nx:int, T:float, cfl:float, a:float, f, t0:float = 0, sns:int = 1):
+def _one_step_method(method_name:str, x0:float, xf:float, nx:int, T:float, cfl:float, a:float, f, t0:float = 0, sns:int = 1,  path_to_save="simulations"):
     """
     Solves the advection equation using the cir method and saves the results.
 
@@ -168,6 +173,9 @@ def _method(method_name:str, x0:float, xf:float, nx:int, T:float, cfl:float, a:f
 
     sns : int
         Snapshot step to save the simulation.
+    
+    path_to_save : str
+        path to save the simulation. Name will be advection-<method>
 
     Returns:
     --------
@@ -197,14 +205,17 @@ def _method(method_name:str, x0:float, xf:float, nx:int, T:float, cfl:float, a:f
 
     coords = {"x": x}
     vars = ["u"]
-    full_path = "simulations/advection-cir.nc"
+    full_path = f"{path_to_save}/advection-{method_name}.nc"
     description = info
-    rootgrp = ncf(full_path, coords, vars, description)
+    ncf = ncfile(full_path, coords, vars, description)
+
+    # Save initial condition
+    ncf.save(t0, {"u": u0})
 
     u = u0.copy()
     t = t0
-    k = 0
-    ks = 0
+    k = 1
+    ks = 1
     while t < T:
         t = t0 + dt * k
 
@@ -215,26 +226,71 @@ def _method(method_name:str, x0:float, xf:float, nx:int, T:float, cfl:float, a:f
         
         # Snapshot of simulation
         if (k % sns == 0):
-            ncf.save(rootgrp, t, {"u": u})
+            ncf.save(t, {"u": u})
             ks+=1
 
         k+=1
 
     info += f"Total iterations: {k-1}\nIterations saved: {ks-1}\n"
 
-    ncf.close(rootgrp)
+    ncf.close()
     print(info)
 
     return full_path
 
-def cir(x0:float, xf:float, nx:int, T:float, cfl:float, a:float, f, t0:float = 0, sns:int = 1):
-    return _method('cir', x0, xf, nx, T, cfl, a, f, t0, sns)
+def select_method(method_name):
+    def method(x0: float, xf: float, nx: int, T: float, cfl: float, a: float, f,
+               t0: float = 0, sns: int = 1, path_to_save: str = "simulations") -> str:
+        """
+        Solves the advection equation using the method and saves the results.
 
-def lax_friedichs(x0:float, xf:float, nx:int, T:float, cfl:float, a:float, f, t0:float = 0, sns:int = 1):
-    return _method('Lax-Friedichs', x0, xf, nx, T, cfl, a, f, t0, sns)
+        Parameters:
+        -----------
+        x0 : float
+            The initial spatial coordinate (left boundary of the domain).
 
-def lax_wendroff(x0:float, xf:float, nx:int, T:float, cfl:float, a:float, f, t0:float = 0, sns:int = 1):
-    return _method('Lax-Wendroff', x0, xf, nx, T, cfl, a, f, t0, sns)
+        xf : float
+            The final spatial coordinate (right boundary of the domain).
 
-def beam_warming(x0:float, xf:float, nx:int, T:float, cfl:float, a:float, f, t0:float = 0, sns:int = 1):
-    return _method('Beam-Warming', x0, xf, nx, T, cfl, a, f, t0, sns)
+        nx : int
+            The number of spatial grid points.
+
+        T : float
+            The total simulation time.
+
+        cfl : float
+            Courant-Friedrichs-Levy condition of the method.
+
+            Stability Condition:
+                0<= cfl <= 1
+
+        a : float
+            The wave speed (advection velocity).
+
+        f : function
+            The initial condition function, which defines the initial profile of the solution.
+
+        t0 : float
+            initial simulation time.
+
+        sns : int
+            Snapshot step to save the simulation.
+
+        path_to_save : str
+            Path to save the simulation. Name will be advection-<method>.
+
+        Returns:
+        --------
+        str
+            The file path where the simulation results are saved.
+        """
+        return _one_step_method(method_name, x0, xf, nx, T, cfl, a, f, t0, sns, path_to_save)
+    
+    method.__name__ = method_name
+    return method
+
+# One Step Methods
+cir = select_method("cir")
+lax_friedrichs = select_method("lax_friedichs")
+lax_wendroff = select_method("lax_wendroff")
+beam_warming = select_method("beam_warming")
