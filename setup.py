@@ -7,7 +7,8 @@ setup(
     package_dir={"": "src"},
     install_requires=[
     'numpy',
-    'netCDF4'
+    'netCDF4',
+    'scipy,'
     ],
     author="Nramirez",
     description="Finite Differences repository",
