@@ -7,8 +7,7 @@ setup(
     package_dir={"": "src"},
     install_requires=[
     'numpy',
-    'netCDF4',
-    'ncviewer @ git+https://github.com/nramirez-f/NcViewer.git'
+    'netCDF4'
     ],
     author="Nramirez",
     description="Finite Differences repository",
