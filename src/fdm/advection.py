@@ -1,5 +1,5 @@
 import numpy as np
-from sim2ncfile import ncfile
+from ncfiles import NcFile
 from scipy.sparse import diags, csr_matrix
 
 def method_of_characteristics(x0:float, xf:float, nx:int, T:float, nt:int, a:float, f, sns:int = 1, path_to_save="simulations"):
@@ -44,11 +44,10 @@ def method_of_characteristics(x0:float, xf:float, nx:int, T:float, nt:int, a:flo
     x = np.linspace(x0, xf, nx)
     dt = T / nt
 
-    coords = {"x": x}
-    vars = ["u"]
     full_path = f"{path_to_save}/advection-exact.nc"
-    description = "Advection simulation by Method of Characteristic"
-    ncf = ncfile(full_path, coords, vars, description)
+    ncf = NcFile(full_path, title='Advection simulation by Method of Characteristics', author = 'Nramirez', institution = 'EDANYA Group (University of Malaga)', source = 'https://github.com/nramirez-f/Finite-Differences', references ='LeVeque, Randall J.: Numerical Methods for Conservation Laws 1992')
+    ncf.addCoords({"x": x})
+    ncf.addVars(['u'])
 
     for k in range(nt + 1):
         t = dt * k
@@ -58,21 +57,19 @@ def method_of_characteristics(x0:float, xf:float, nx:int, T:float, nt:int, a:flo
         if (k % sns == 0):
             ncf.save(t, {"u": u})
 
-    ncf.close()
-
     return full_path
 
 def _matrix(a:float, nu, dim, method:str):
 
     if (method == "cir"):
         if (a > 0):
-            main_diag = (1 - nu) * np.ones(dim)
+            diag = (1 - nu) * np.ones(dim)
             lower_diag = nu * np.ones(dim-1)
-            A = diags([main_diag, lower_diag], [0, -1], shape=(dim, dim), format='csr')
+            A = diags([diag, lower_diag], [0, -1], shape=(dim, dim), format='csr')
         else:
-            main_diag = (1 + nu) * np.ones(dim)
+            diag = (1 + nu) * np.ones(dim)
             upper_diag = (-nu) * np.ones(dim-1)
-            A = diags([main_diag, upper_diag], [0, 1], shape=(dim, dim), format='csr')
+            A = diags([diag, upper_diag], [0, 1], shape=(dim, dim), format='csr')
 
     elif (method == "lax_friedichs"):
         lower_diag = 0.5 * (1+nu) * np.ones(dim-1)
@@ -91,18 +88,37 @@ def _matrix(a:float, nu, dim, method:str):
             lower_diag = nu * (2-nu) * np.ones(dim-1)
             diag = 0.5 * (2-3*nu+nu*nu) * np.ones(dim)
             A = diags([lower_lower_diag, lower_diag, diag], [-2, -1, 0], shape=(dim, dim), format='csr')
+        else:
+            upper_upper_diag = 0.5 * (-nu) * ((-nu)-1) * np.ones(dim-2)
+            upper_diag = (-nu) * (2+nu) * np.ones(dim-1)
+            diag = 0.5 * (2+3*nu+nu*nu) * np.ones(dim)
+            A = diags([diag, upper_diag, upper_upper_diag], [0, 1, 2], shape=(dim, dim), format='csr')
+
+    elif (method == "fromm"):
+        if (a > 0):
+            lower_lower_diag = (-0.25) * (1-nu) * nu * np.ones(dim-2)
+            lower_diag = 0.25 * (5-nu) * nu * np.ones(dim-1)
+            diag = 0.25 * (1-nu) * (4+nu) * np.ones(dim)
+            upper_diag = (-0.25) * (1-nu) *np.ones(dim-1)
+            A = diags([lower_lower_diag, lower_diag, diag, upper_diag], [-2, -1, 0, 1], shape=(dim, dim), format='csr')
 
     else:
         raise RuntimeError("404 - Method Not Found")
+    
 
     # Dirichlet Conditions
     A = A.tolil()
 
     A[0, :] = 0
     A[0, 0] = 1
-    if (method == "Beam-Warming"):
-        A[1, :] = 0
-        A[1, 1] = 1
+    if (method == "beam_warming" or method == "fromm"):
+        if (a > 0):
+            A[1, :] = 0
+            A[1, 1] = 1
+        else:
+            A[-2, :] = 0
+            A[-2, -2] = 1
+
     A[-1, :] = 0
     A[-1, -1] = 1
 
@@ -114,24 +130,27 @@ def _matrix(a:float, nu, dim, method:str):
 def _boundary_conditions(u, x0, xf, f, type:str, a:float, method:str):
 
     # Dirichlet
-    if (type == "Dirichlet"):
-        if (method == "Beam-Warming"):
-            if (a > 0):
-                u[0] = f(x0)
-                u[1] = f(x0)
-                u[-1] = f(xf)
-        else:
+    if (type == "dirichlet"):
             u[0] = f(x0)
             u[-1] = f(xf)
+
+            if (method == "beam_warming"  or method == "fromm"):
+                if (a > 0):
+                    u[1] = u[0]
+                else:
+                    u[-2] = u[-1]
         
     return u
 
 def _iteration(a, nu, dim, method_name, u, iteration_type="iterative"):
 
-    if (iteration_type == "iterative"):
-        u = _matrix(a, nu, dim, method_name) @ u 
+    if (a == 0):
+        u = u
     else:
-        u
+        if (iteration_type == "iterative"):
+            u = _matrix(a, nu, dim, method_name) @ u 
+        else:
+            u
 
     return u
 
@@ -189,9 +208,12 @@ def _one_step_method(method_name:str, x0:float, xf:float, nx:int, T:float, cfl:f
     N = nx - 2
     x = np.linspace(x0, xf, nx)
     dx = np.abs(xf - x0) / nx
-    dt = (cfl * dx) / a 
+    if (a == 0):
+        dt = (T - t0)
+    else:
+        dt = (cfl * dx) / np.abs(a) 
 
-    # Courant Number
+    # Courant Number (positive)
     nu = a * dt / dx
 
     # Info
@@ -203,11 +225,10 @@ def _one_step_method(method_name:str, x0:float, xf:float, nx:int, T:float, cfl:f
     if (not (0 <= cfl and  cfl <= 1)):
         raise RuntimeError("Unstable method - CFL condition not satisfied")
 
-    coords = {"x": x}
-    vars = ["u"]
     full_path = f"{path_to_save}/advection-{method_name}.nc"
-    description = info
-    ncf = ncfile(full_path, coords, vars, description)
+    ncf = NcFile(full_path, title=f'Advection simulation by Method {method_name}', description=info, author = 'Nramirez', institution = 'EDANYA Group (University of Malaga)', source = 'https://github.com/nramirez-f/Finite-Differences', references ='LeVeque, Randall J.: Numerical Methods for Conservation Laws 1992')
+    ncf.addCoords({'x': x})
+    ncf.addVars(['u'])
 
     # Save initial condition
     ncf.save(t0, {"u": u0})
@@ -222,7 +243,7 @@ def _one_step_method(method_name:str, x0:float, xf:float, nx:int, T:float, cfl:f
         u = _iteration(a, nu, N+2, method_name, u)
 
         # Boundary conditions
-        u = _boundary_conditions(u, x0, xf, f, 'Dirichlet', a, method_name)
+        u = _boundary_conditions(u, x0, xf, f, 'dirichlet', a, method_name)
         
         # Snapshot of simulation
         if (k % sns == 0):
@@ -233,7 +254,6 @@ def _one_step_method(method_name:str, x0:float, xf:float, nx:int, T:float, cfl:f
 
     info += f"Total iterations: {k-1}\nIterations saved: {ks-1}\n"
 
-    ncf.close()
     print(info)
 
     return full_path
@@ -294,3 +314,4 @@ cir = select_method("cir")
 lax_friedrichs = select_method("lax_friedichs")
 lax_wendroff = select_method("lax_wendroff")
 beam_warming = select_method("beam_warming")
+fromm = select_method("fromm")

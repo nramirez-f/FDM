@@ -1,5 +1,5 @@
-from advection import *
-from ncviewer import NcFile
+from fdm.advection import *
+from ncviewer import NcView
 from initial_conditions import *
 
 x0 = 0
@@ -11,5 +11,5 @@ cfl = 0.8
 
 filepath = method_of_characteristics(x0, xf, nx, T, 125, a, heaviside(0.3, 0.7))
 
-ncv = NcFile(filepath)
-ncv.evolution(0)
+ncv = NcView(filepath)
+ncv.evolution(0, line_mode='lines')
