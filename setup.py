@@ -8,7 +8,7 @@ setup(
     install_requires=[
     'numpy',
     'netCDF4',
-    'scipy,'
+    'scipy',
     ],
     author="Nramirez",
     description="Finite Differences repository",
