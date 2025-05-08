@@ -44,7 +44,7 @@ def method_of_characteristics(x0:float, xf:float, nx:int, T:float, nt:int, a:flo
     x = np.linspace(x0, xf, nx)
     dt = T / nt
 
-    full_path = f"{path_to_save}/advection-exact.nc"
+    full_path = f"advection-exact.nc"
     ncf = NcFile(full_path, title='Advection simulation by Method of Characteristics', author = 'Nramirez', institution = 'EDANYA Group (University of Malaga)', source = 'https://github.com/nramirez-f/Finite-Differences', references ='LeVeque, Randall J.: Numerical Methods for Conservation Laws 1992')
     ncf.addCoords({"x": x})
     ncf.addVars(['u'])
@@ -225,7 +225,7 @@ def _one_step_method(method_name:str, x0:float, xf:float, nx:int, T:float, cfl:f
     if (not (0 <= cfl and  cfl <= 1)):
         raise RuntimeError("Unstable method - CFL condition not satisfied")
 
-    full_path = f"{path_to_save}/advection-{method_name}.nc"
+    full_path = f"advection-{method_name}.nc"
     ncf = NcFile(full_path, title=f'Advection simulation by Method {method_name}', description=info, author = 'Nramirez', institution = 'EDANYA Group (University of Malaga)', source = 'https://github.com/nramirez-f/Finite-Differences', references ='LeVeque, Randall J.: Numerical Methods for Conservation Laws 1992')
     ncf.addCoords({'x': x})
     ncf.addVars(['u'])
