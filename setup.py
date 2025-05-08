@@ -6,8 +6,8 @@ setup(
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     install_requires=[
-    'numpy',
-    'netCDF4',
+    "ncfiles @ git+https://github.com/nramirez-f/NcFiles.git#egg=ncfiles",
+    'plotly',
     'scipy',
     ],
     author="Nramirez",
