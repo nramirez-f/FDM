@@ -1,20 +1,15 @@
-from setuptools import setup, find_packages
+from setuptools import setup
 
 setup(
-    name='fdm',
-    version='0.0',
-    packages=find_packages(where="src"),
-    package_dir={"": "src"},
-    install_requires=[
-    "ncfiles @ git+https://github.com/nramirez-f/NcFiles.git#egg=ncfiles",
-    'plotly',
-    'scipy',
-    ],
+    name="fdm",
+    version="0.1",
+    py_modules=["__init__", "advection", "burgers"],
+    install_requires=[],
     author="Nramirez",
-    description="Finite Differences repository",
+    description="Finite Difference Method module",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
-    url="https://github.com/nramirez-f/Finite-Differences",
+    url="https://github.com/nramirez-f/FDM",
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
