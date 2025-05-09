@@ -2,9 +2,9 @@ from setuptools import setup
 
 setup(
     name="fdm",
-    version="0.1",
+    version="0.0",
     py_modules=["__init__", "advection", "burgers"],
-    install_requires=[],
+    install_requires=["numpy", "scipy", "ncfiles @ git+https://github.com/nramirez-f/NcFiles.git@main#egg=ncfiles"],
     author="Nramirez",
     description="Finite Difference Method module",
     long_description=open("README.md").read(),

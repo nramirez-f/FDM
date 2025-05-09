@@ -1,6 +1,5 @@
 import numpy as np
 from ncfiles import NcFile
-from scipy.sparse import diags, csr_matrix
 
 def method_of_characteristics(x0:float, xf:float, nx:int, T:float, nt:int, a:float, f, sns:int = 1, path_to_save="simulations"):
     """
